@@ -1,0 +1,9 @@
+{
+  "languages": {
+    "vi": "Vietnamese",
+    "en": "English"
+  },
+  "auth": {
+    "login": "Login"
+  }
+}

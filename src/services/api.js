@@ -2,10 +2,7 @@ import axios from 'axios'
 import { useLoadingStore } from '@/stores/loading'
 
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_API_BASE_URL
 })
 
 axiosClient.interceptors.request.use(
@@ -16,7 +13,7 @@ axiosClient.interceptors.request.use(
     const token = localStorage.getItem('token')
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Token ${token}`
     }
 
     return config
@@ -42,6 +39,8 @@ axiosClient.interceptors.response.use(
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'
+    } else if (error.response && error.response.status === 403) {
+      alert(error.response.data?.message || 'Bạn không có quyền thực hiện thao tác này!')
     }
 
     return Promise.reject(error)
@@ -64,15 +63,6 @@ export const useApi = () => {
     post: postRequest,
     put: putRequest,
     patch: patchRequest,
-    delete: deleteRequest,
-    client: axiosClient,
+    delete: deleteRequest
   }
-}
-
-export default {
-  get: getRequest,
-  post: postRequest,
-  put: putRequest,
-  patch: patchRequest,
-  delete: deleteRequest,
 }

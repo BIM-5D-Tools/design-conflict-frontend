@@ -1,32 +1,54 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '~/stores/auth'
 
+import MainLayout from '~/layouts/MainLayout.vue'
 import LoginView from '~/views/auth/LoginView.vue'
-const AdminDashboard = { template: '<div class="p-8"><h1 class="text-2xl font-bold">Admin/Superadmin Dashboard</h1></div>' }
-const StaffDashboard = { template: '<div class="p-8"><h1 class="text-2xl font-bold">Staff Dashboard</h1></div>' }
-const CustomerDashboard = { template: '<div class="p-8"><h1 class="text-2xl font-bold">Customer Dashboard</h1></div>' }
+import HomeView from '~/views/home/HomeView.vue'
+import ConflictsView from '~/views/design/ConflictsView.vue'
+import ProjectView from '~/views/projects/ProjectView.vue'
+import UserView from '~/views/users/UserView.vue'
+import AppView from '~/views/apps/AppView.vue'
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginView },
-  { 
-    path: '/admin', 
-    name: 'Admin', 
-    component: AdminDashboard, 
-    meta: { requiresAuth: true, roles: ['SUPERUSER', 'ADMIN'] } 
-  },
-  { 
-    path: '/staff', 
-    name: 'Staff', 
-    component: StaffDashboard, 
-    meta: { requiresAuth: true, roles: ['STAFF', 'ADMIN', 'SUPERUSER'] } 
-  },
-  { 
-    path: '/customer', 
-    name: 'Customer', 
-    component: CustomerDashboard, 
-    meta: { requiresAuth: true, roles: ['CUSTOMER', 'STAFF', 'ADMIN', 'SUPERUSER'] } 
-  },
-  { path: '/', redirect: '/login' }
+  {
+    path: '/',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', redirect: '/dashboard' },
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: HomeView,
+        meta: { title: 'Trang chủ' }
+      },
+      {
+        path: 'projects',
+        name: 'Projects',
+        component: ProjectView,
+        meta: { title: 'Dự án', appCode: 'project' }
+      },
+      {
+        path: 'design-conflicts',
+        name: 'DesignConflicts',
+        component: ConflictsView,
+        meta: { title: 'Xung đột thiết kế', appCode: 'design_conflict' }
+      },
+      {
+        path: 'users',
+        name: 'Users',
+        component: UserView,
+        meta: { title: 'Quản lý tài khoản', appCode: 'user_management' }
+      },
+      {
+        path: 'apps',
+        name: 'Apps',
+        component: AppView,
+        meta: { title: 'Quản lý ứng dụng', appCode: 'app' }
+      }
+    ]
+  }
 ]
 
 const router = createRouter({
@@ -34,22 +56,40 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth) {
-    if (!authStore.isAuthenticated) {
+  if (to.path === '/login') {
+    return true
+  }
+
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.fetchUserProfile()
+    } catch (err) {
+      authStore.logout()
       return '/login'
     }
-    
-    const userRole = authStore.userRole
-    if (to.meta.roles && !to.meta.roles.includes(userRole)) {
-      alert('Bạn không có quyền truy cập trang này!')
-      return from.path || '/login'
+  }
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return '/login'
+  }
+
+  if (to.meta.appCode) {
+    const hasAccess = authStore.authorizedMenus.some((menu) => menu.code === to.meta.appCode)
+    if (!hasAccess) {
+      alert('Tài khoản của bạn chưa được cấp quyền sử dụng ứng dụng này!')
+      return from.path && from.path !== '/login' ? from.path : '/dashboard'
     }
   }
 
   return true
+})
+
+router.onError((error) => {
+  console.error('❌ Lỗi load trang component:', error)
+  alert('Không thể tải trang này! Vui lòng kiểm tra lại đường dẫn file Vue hoặc F5 lại trang.')
 })
 
 export default router

@@ -1,0 +1,9 @@
+{
+  "languages": {
+    "vi": "Tiếng Việt",
+    "en": "Tiếng Anh"
+  },
+  "auth": {
+    "login": "Đăng nhập"
+  }
+}

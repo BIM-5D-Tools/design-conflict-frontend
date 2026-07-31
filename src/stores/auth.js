@@ -1,27 +1,56 @@
 import { defineStore } from 'pinia'
-import { login } from '@/api/auth'
+import { login, getInfo } from '@/api/auth'
+import { DEFAULT_MENUS, APP_REGISTRY } from '@/config/menu'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('user')) || null,
+    user: null,
     token: localStorage.getItem('token') || null,
+    isInitialized: false
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
     userRole: (state) => state.user?.role || null,
+    isSuperUser: (state) => state.user?.role === 'SUPERUSER' || state.user?.is_superuser,
+    authorizedMenus: (state) => {
+      if (state.user?.role === 'SUPERUSER' || state.user?.is_superuser) {
+        return [...DEFAULT_MENUS, ...APP_REGISTRY]
+      }
+
+      if (!state.user || !state.user.apps) return []
+
+      const userAppCodes = state.user?.apps?.map((a) => a.code) || []
+      const dynamicApps = APP_REGISTRY.filter((registryApp) =>
+        userAppCodes.includes(registryApp.code)
+      )
+
+      return [...DEFAULT_MENUS, ...dynamicApps]
+    }
   },
   actions: {
-    async login(username, password) {
+    async fetchUserProfile() {
+      if (!this.token) return null
       try {
-        const response = await login({ username, password })
+        const response = await getInfo()
+        this.user = response
+        this.isInitialized = true
+        return this.user
+      } catch (error) {
+        this.logout()
+        throw error
+      }
+    },
+    async login(email, password) {
+      try {
+        const response = await login({ email, password })
 
         this.token = response.token
-        this.user = response.data.user
+        this.user = response.user
 
         localStorage.setItem('token', this.token)
-        localStorage.setItem('user', JSON.stringify(this.user))
-        
-        return response.data
+        this.isInitialized = true
+
+        return response
       } catch (error) {
         throw error.response?.data?.message || 'Đăng nhập thất bại!'
       }
@@ -29,8 +58,32 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = null
       this.user = null
+      this.isInitialized = false
       localStorage.removeItem('token')
-      localStorage.removeItem('user')
+    },
+    hasPermission(appCode, action) {
+      if (!this.user || !this.user.apps) return false
+
+      if (this.user.role === 'SUPERUSER' || this.user.is_superuser) return true
+
+      const app = this.user.apps.find((a) => a.code === appCode)
+      if (!app || !app.permissions) return false
+
+      if (app.permissions.includes('ALL')) return true
+
+      return app.permissions.includes(action)
+    },
+    canDoAction(appCode, action) {
+      if (!this.user) return false
+
+      if (this.isSuperUser) return true
+
+      const permissions = this.user.app_permissions || []
+      const appPerm = permissions.find((p) => p.app_code === appCode || p.app === appCode)
+
+      if (!appPerm) return false
+
+      return (appPerm.permissions || []).includes(action)
     }
   }
 })
