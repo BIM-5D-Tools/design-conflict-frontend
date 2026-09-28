@@ -63,7 +63,8 @@ router.beforeEach(async (to, from) => {
     return true
   }
 
-  if (authStore.token && !authStore.user) {
+  // SỬA DÒNG NÀY: Kiểm tra nếu chưa có user HOẶC user.apps chưa tồn tại
+  if (authStore.token && (!authStore.user || !Array.isArray(authStore.user.apps))) {
     try {
       await authStore.fetchUserProfile()
     } catch (err) {
