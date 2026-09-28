@@ -9,6 +9,7 @@
         </p>
       </div>
 
+      {{authStore.canDoAction('project', 'CREATE')}}
       <button
         v-if="authStore.hasPermission('project', 'CREATE')"
         @click="openModal()"

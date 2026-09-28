@@ -71,7 +71,7 @@ export const useAuthStore = defineStore('auth', {
 
       if (app.permissions.includes('ALL')) return true
 
-      return app.permissions.includes(action)
+      return app.permissions.includes(action.toLowerCase())
     },
     canDoAction(appCode, action) {
       if (!this.user) return false
@@ -83,7 +83,7 @@ export const useAuthStore = defineStore('auth', {
 
       if (!appPerm) return false
 
-      return (appPerm.permissions || []).includes(action)
+      return (appPerm.permissions || []).includes(action.toLowerCase())
     }
   }
 })
