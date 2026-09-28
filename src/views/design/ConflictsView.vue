@@ -8,28 +8,89 @@
           Theo dõi, phát hiện và ghi nhận phương án xử lý lỗi thiết kế BIM/CAD
         </p>
       </div>
-      <!-- Nút Thêm Mới: Ẩn với CUSTOMER hoặc người không có quyền Create -->
-      <button
-        v-if="!isCustomer && authStore.canDoAction('DESIGN_CONFLICT', 'create')"
-        @click="openModal()"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 text-xs active:scale-95 cursor-pointer"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <!-- Nút Thêm Mới: Ẩn với CUSTOMER hoặc người không có quyền Create -->
+        <button
+          v-if="!isCustomer && authStore.canDoAction('DESIGN_CONFLICT', 'create')"
+          @click="openModal()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 text-xs active:scale-95 cursor-pointer"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-        <span>Thêm Xung Đột Mới</span>
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span>Thêm Xung Đột Mới</span>
+        </button>
+        <!-- DROPDOWN BUTTON XUẤT BÁO CÁO (EXCEL & PDF) -->
+        <div v-if="!isCustomer" class="relative inline-block text-left" ref="dropdownRef">
+          <button
+            type="button"
+            @click="isDropdownOpen = !isDropdownOpen"
+            :disabled="exporting"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-emerald-500/20 transition-all flex items-center space-x-2 text-xs active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            <span>{{ exporting ? 'Đang xuất file...' : 'Xuất Báo Cáo' }}</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3 w-3 ml-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <!-- Menu lựa chọn định dạng -->
+          <div
+            v-if="isDropdownOpen"
+            class="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100"
+          >
+            <button
+              @click="triggerExport('excel')"
+              class="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center space-x-2.5 transition font-semibold"
+            >
+              <span class="text-base">📊</span>
+              <span>Xuất file Excel (.xlsx)</span>
+            </button>
+            <button
+              @click="triggerExport('pdf')"
+              class="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center space-x-2.5 transition font-semibold"
+            >
+              <span class="text-base">📑</span>
+              <span>Xuất file PDF (.pdf)</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- BỘ LỌC (FILTER BAR CARD) -->
@@ -624,8 +685,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { getConflicts, addConflict, editConflict, deleteConflict } from '~/api/design'
+import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
+import {
+  getConflicts,
+  addConflict,
+  editConflict,
+  deleteConflict,
+  exportConflict
+} from '~/api/design'
 import { getProjects } from '~/api/project'
 import { useAuthStore } from '~/stores/auth'
 import { useUIStore } from '~/stores/ui'
@@ -773,11 +840,11 @@ const fetchConflictData = async () => {
     const params = {
       page: currentPage.value,
       page_size: pageSize.value,
-      search: filters.search || undefined,
-      project: filters.project || undefined,
-      zone: filters.zone || undefined,
-      category: filters.category || undefined,
-      status: filters.status || undefined
+      search: filters.search || '',
+      project: filters.project || '',
+      zone: filters.zone || '',
+      category: filters.category || '',
+      status: filters.status || ''
     }
     const res = await getConflicts(params)
 
@@ -1046,6 +1113,61 @@ const handleDelete = (id) => {
     }
   })
 }
+
+const exporting = ref(false)
+const isDropdownOpen = ref(false)
+const dropdownRef = ref(null)
+
+const handleClickOutside = (e) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    isDropdownOpen.value = false
+  }
+}
+
+const triggerExport = async (typeExport) => {
+  isDropdownOpen.value = false
+  exporting.value = true
+  try {
+    const params = {
+      type: typeExport, // 'excel' hoặc 'pdf'
+      search: filters.search || '',
+      project: filters.project || '',
+      zone: filters.zone || '',
+      category: filters.category || '',
+      status: filters.status || ''
+    }
+
+    const response = await exportConflict(params)
+    console.log("🚀 ~ triggerExport ~ response:", response)
+
+    const ext = typeExport === 'pdf' ? 'pdf' : 'xlsx'
+    const blob = new Blob([response.data || response], {
+      type:
+        typeExport === 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `Bao_Cao_Xung_Dot_${Date.now()}.${ext}`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    uiStore.showSuccess(`Xuất báo cáo ${type.toUpperCase()} thành công!`)
+  } catch (err) {
+    console.error('Lỗi xuất báo cáo:', err)
+    uiStore.showError('Không thể xuất file báo cáo!')
+  } finally {
+    exporting.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 onMounted(() => {
   fetchInitialProjects()

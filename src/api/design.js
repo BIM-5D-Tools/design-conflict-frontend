@@ -23,3 +23,10 @@ export const deleteConflict = async (id) => {
   const res = await request.delete(`${DESIGN.GET_DESIGN_CONFLICT}${id}/`)
   return res
 }
+
+export const exportConflict = async (data) => {
+  const res = await request.get(`${DESIGN.EXPORT_DESIGN_CONFLICT}?${objectToQueryParams(data)}`, {
+    responseType: 'blob'
+  })
+  return res
+}

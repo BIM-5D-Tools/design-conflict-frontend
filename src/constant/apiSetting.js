@@ -16,5 +16,6 @@ export const PROJECTS = {
 }
 
 export const DESIGN = {
-  GET_DESIGN_CONFLICT: '/api/conflicts/'
+  GET_DESIGN_CONFLICT: '/api/conflicts/',
+  EXPORT_DESIGN_CONFLICT: '/api/conflicts/export-report/'
 }
