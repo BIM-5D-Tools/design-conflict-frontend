@@ -1157,7 +1157,7 @@ const triggerExport = async (typeExport) => {
     link.remove()
     window.URL.revokeObjectURL(url)
 
-    uiStore.showSuccess(`Xuất báo cáo ${type.toUpperCase()} thành công!`)
+    uiStore.showSuccess(`Xuất báo cáo ${typeExport.toUpperCase()} thành công!`)
   } catch (err) {
     console.error('Lỗi xuất báo cáo:', err)
     uiStore.showError('Không thể xuất file báo cáo!')
