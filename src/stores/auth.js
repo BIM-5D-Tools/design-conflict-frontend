@@ -78,8 +78,8 @@ export const useAuthStore = defineStore('auth', {
 
       if (this.isSuperUser) return true
 
-      const permissions = this.user.app_permissions || []
-      const appPerm = permissions.find((p) => p.app_code === appCode || p.app === appCode)
+      const permissions = this.user.apps || []
+      const appPerm = permissions.find((p) => p.code === appCode || p.app === appCode)
 
       if (!appPerm) return false
 

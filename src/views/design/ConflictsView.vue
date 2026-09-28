@@ -11,7 +11,7 @@
       <div class="flex flex-col md:flex-row md:items-center gap-4">
         <!-- Nút Thêm Mới: Ẩn với CUSTOMER hoặc người không có quyền Create -->
         <button
-          v-if="!isCustomer && authStore.canDoAction('DESIGN_CONFLICT', 'create')"
+          v-if="!isCustomer && authStore.canDoAction(app, 'create')"
           @click="openModal()"
           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2 text-xs active:scale-95 cursor-pointer"
         >
@@ -300,7 +300,7 @@
               <td class="py-3.5 px-4 text-right space-x-1">
                 <!-- Nút Sửa: Customer luôn có nút Sửa (nếu được vào trang), Staff/Admin thì dựa theo canDoAction update -->
                 <button
-                  v-if="isCustomer || authStore.canDoAction('DESIGN_CONFLICT', 'update')"
+                  v-if="isCustomer || authStore.canDoAction(app, 'update')"
                   @click="openModal(item)"
                   class="text-blue-600 hover:text-blue-800 font-semibold transition px-2 py-1 rounded-lg hover:bg-blue-50 cursor-pointer"
                   :title="isCustomer ? 'Ghi ý kiến phản hồi' : 'Sửa xung đột'"
@@ -310,7 +310,7 @@
 
                 <!-- Nút Xóa: Ẩn hoàn toàn với Customer -->
                 <button
-                  v-if="!isCustomer && authStore.canDoAction('DESIGN_CONFLICT', 'delete')"
+                  v-if="!isCustomer && authStore.canDoAction(app, 'delete')"
                   @click="handleDelete(item.id)"
                   class="text-rose-500 hover:text-rose-700 font-semibold transition px-2 py-1 rounded-lg hover:bg-rose-50 cursor-pointer"
                 >
@@ -699,6 +699,8 @@ import { useUIStore } from '~/stores/ui'
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
+
+const app = 'design_conflict'
 
 // 🟢 TÍNH NĂNG KIỂM TRA ROLE CUSTOMER
 const isCustomer = computed(() => {
@@ -1138,7 +1140,7 @@ const triggerExport = async (typeExport) => {
     }
 
     const response = await exportConflict(params)
-    console.log("🚀 ~ triggerExport ~ response:", response)
+    console.log('🚀 ~ triggerExport ~ response:', response)
 
     const ext = typeExport === 'pdf' ? 'pdf' : 'xlsx'
     const blob = new Blob([response.data || response], {
