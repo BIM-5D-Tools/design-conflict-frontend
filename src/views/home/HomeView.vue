@@ -18,27 +18,51 @@
           <select
             v-model="selectedProject"
             @change="loadDashboardData"
-            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-blue-500"
+            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="">Tất cả dự án</option>
             <option v-for="p in projectList" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>
 
-        <!-- Lọc Khoảng thời gian -->
+        <!-- Lọc Kỳ báo cáo (Presets) -->
         <div class="flex items-center space-x-1.5 text-xs">
-          <span class="text-slate-400 font-medium">Thời gian:</span>
+          <span class="text-slate-400 font-medium">Kỳ báo cáo:</span>
           <select
             v-model="selectedTimeRange"
-            @change="loadDashboardData"
-            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-blue-500"
+            @change="handleTimeRangeChange"
+            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="this_month">Tháng 7 này (Tháng hiện tại)</option>
-            <option value="last_month">Tháng trước (Tháng 6)</option>
-            <option value="this_quarter">Quý này (Q3/2026)</option>
-            <option value="this_year">Năm 2026</option>
-            <option value="all">Tất cả thời gian</option>
+            <option value="today">Hôm nay</option>
+            <option value="last_7_days">7 ngày qua</option>
+            <option value="last_30_days">30 ngày gần nhất</option>
+            <option value="this_month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
+            <option value="this_quarter">Quý này</option>
+            <option value="this_year">Năm nay</option>
+            <option value="custom">Tùy chọn khoảng ngày...</option>
+            <option value="all">Toàn bộ thời gian</option>
           </select>
+        </div>
+
+        <!-- Khoảng ngày Tùy chỉnh (Chỉ hiện khi chọn Custom) -->
+        <div
+          v-if="selectedTimeRange === 'custom'"
+          class="flex items-center space-x-1.5 text-xs animate-fadeIn"
+        >
+          <input
+            type="date"
+            v-model="customDate.start"
+            @change="loadDashboardData"
+            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2 py-1 text-xs outline-none focus:border-blue-500"
+          />
+          <span class="text-slate-400 font-semibold">-</span>
+          <input
+            type="date"
+            v-model="customDate.end"
+            @change="loadDashboardData"
+            class="bg-slate-50 border border-slate-200/80 rounded-xl px-2 py-1 text-xs outline-none focus:border-blue-500"
+          />
         </div>
       </div>
     </div>
@@ -323,6 +347,92 @@ const isCustomer = computed(() => authStore.user && authStore.user.role === 'CUS
 const projectList = ref([])
 const selectedProject = ref('')
 const selectedTimeRange = ref('this_month')
+const customDate = reactive({
+  start: '',
+  end: ''
+})
+
+// Hàm tính toán ngày bắt đầu & ngày kết thúc theo chuẩn ISO YYYY-MM-DD
+const getDateRange = () => {
+  const now = new Date()
+  const formatDate = (d) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  let start = null
+  let end = formatDate(now)
+
+  switch (selectedTimeRange.value) {
+    case 'today':
+      start = end
+      break
+    case 'last_7_days': {
+      const d = new Date()
+      d.setDate(d.getDate() - 6)
+      start = formatDate(d)
+      break
+    }
+    case 'last_30_days': {
+      const d = new Date()
+      d.setDate(d.getDate() - 29)
+      start = formatDate(d)
+      break
+    }
+    case 'this_month': {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      start = formatDate(firstDay)
+      break
+    }
+    case 'last_month': {
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+      start = formatDate(firstDayLastMonth)
+      end = formatDate(lastDayLastMonth)
+      break
+    }
+    case 'this_quarter': {
+      const quarter = Math.floor(now.getMonth() / 3)
+      const startQuarter = new Date(now.getFullYear(), quarter * 3, 1)
+      start = formatDate(startQuarter)
+      break
+    }
+    case 'this_year': {
+      start = `${now.getFullYear()}-01-01`
+      break
+    }
+    case 'custom':
+      start = customDate.start || null
+      end = customDate.end || null
+      break
+    case 'all':
+    default:
+      start = null
+      end = null
+      break
+  }
+
+  return { start, end }
+}
+
+const handleTimeRangeChange = () => {
+  // Nếu chọn custom mà chưa có ngày, đặt mặc định 30 ngày gần đây
+  if (selectedTimeRange.value === 'custom' && !customDate.start) {
+    const now = new Date()
+    const past = new Date()
+    past.setDate(now.getDate() - 30)
+    const fmt = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    customDate.start = fmt(past)
+    customDate.end = fmt(now)
+
+    loadDashboardData()
+  }
+
+  if (selectedTimeRange.value !== 'custom') loadDashboardData()
+}
 
 // State Thống Kê
 const stats = reactive({
@@ -384,15 +494,20 @@ const loadDashboardData = async () => {
     const projRes = await getProjects()
     projectList.value = projRes.results || projRes.data || projRes
 
-    // 2. Tải danh sách xung đột để tính toán thống kê
+    // 2. Lấy khoảng thời gian lọc
+    const { start, end } = getDateRange()
+
+    // 3. Tải danh sách xung đột (truyền filter date vào backend)
     const conflictRes = await getConflicts({
-      project: selectedProject.value || undefined,
+      project: selectedProject.value || '',
+      created_at_after: start || '', // Hoặc created_at__gte tuỳ cấu hình Django filter
+      created_at_before: end ? `${end}T23:59:59` : '', // Bao gồm hết ngày kết thúc
       page_size: 1000
     })
 
     const list = conflictRes.results || conflictRes.data || conflictRes || []
 
-    // 3. Tính toán các chỉ số KPI
+    // 4. Tính toán các chỉ số KPI
     stats.total = list.length
     stats.newCount = list.filter((i) => i.status === 'NEW').length
     stats.pendingCount = list.filter((i) => i.status === 'PENDING').length
@@ -407,7 +522,7 @@ const loadDashboardData = async () => {
         project_name: projectList.value.find((p) => p.id === i.project)?.name || 'Dự án'
       }))
 
-    // 4. Render dữ liệu cho Biểu đồ Cột theo từng Dự Án
+    // 5. Cập nhật biểu đồ cột
     const labels = projectList.value.map((p) => p.name)
     const newSeries = []
     const pendingSeries = []
