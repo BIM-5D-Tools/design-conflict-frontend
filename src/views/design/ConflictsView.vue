@@ -10,6 +10,8 @@
       </div>
       <div class="flex flex-col md:flex-row md:items-center gap-4">
         <!-- Nút Thêm Mới: Ẩn với CUSTOMER hoặc người không có quyền Create -->
+         {{ !isCustomer }}
+         {{ authStore.canDoAction(app, 'create') }}
         <button
           v-if="!isCustomer && authStore.canDoAction(app, 'create')"
           @click="openModal()"

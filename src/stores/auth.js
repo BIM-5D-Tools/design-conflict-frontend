@@ -81,9 +81,15 @@ export const useAuthStore = defineStore('auth', {
       const permissions = this.user.apps || []
       const appPerm = permissions.find((p) => p.code === appCode || p.app === appCode)
 
-      if (!appPerm) return false
+      if (!appPerm || !Array.isArray(appPerm.permissions)) return false
 
-      return (appPerm.permissions || []).includes(action.toLowerCase())
+      const userPerms = appPerm.permissions.map((p) => String(p).toUpperCase())
+
+      if (userPerms.includes('ALL')) {
+        return true
+      }
+
+      return userPerms.includes(String(action).toUpperCase())
     }
   }
 })
